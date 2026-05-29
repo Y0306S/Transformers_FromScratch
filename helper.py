@@ -4,7 +4,7 @@ Helper functions for the project.
 import numpy as np # representing matrix and thier operations
 np.random.seed(42) # for reproducibility
 
-def tokenize(text, vocab):
+def old_tokenize(text, vocab):
     """
     Use counter to split the text into tokens in this case into different words and mapping them into the different ids 
     Also adding the special tokens like "<PAD>, <SOS>, <EOS>, <UNK>" to the corpus and assign it a unique id as well
@@ -20,11 +20,30 @@ def tokenize(text, vocab):
         res.append(vocab[lowered_word])
     return res    
 
+from transformers import Autotokenizer
+import torch.nn as nn
+
+def tokenize(text, vocab):
+    """
+    Now we would be using the Autotokenizer from the transformers library instead
+    """
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    pass
+    
+
 def get_embedding_table(len_vocab):
     d_model = 512 # dimension of embeddings
     embedding = np.random.randn(len_vocab, d_model)
     return embedding
 
+def update_embedding_table(embedding, len_embed, len_vocab):
+    """
+    This function will update the embedding table with the new vocab
+    """
+    for i in range(len_embed, len_vocab):
+        new_embedding = np.random.randn(1, 512) # generate a random embedding for the new word
+        embedding = np.vstack((embedding, new_embedding)) # add the new embedding to the table
+    return embedding
 
 def get_embeddings(tokens, embedding):
     """
@@ -92,7 +111,11 @@ def layer_norm(x):
     normalized = (x-mean) / np.sqrt(variance + epsilon)
     return normalized
 
-def ffn(x, W_1, W_2, b_1, b_2):
+def ffn(x, weights):
+    W_1 = weights[W_1]
+    b_1 = weights[b_1]
+    W_2 = weights[W_2]
+    b_2 = weights[b_2]
     return np.dot(np.maximum(0, np.dot(x, W_1) + b_1), W_2) + b_2
 
 def linear(x, embedding):
