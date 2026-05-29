@@ -71,7 +71,20 @@ def post_decoder(decoder_output):
     """
     we would perform the linear transformation to get the output logits, then softmax to get the probabilities
     """
-    
+    output_logits = [linear(x, decoder_output) for x in decoder_output]
+    output_probs = [np.exp(logit) / np.sum(np.exp(logit)) for logit in output_logits]
+    return output_probs
+
+def main():
+    english_sentences = []
+    french_sentences = []
+    preprocessed_english_sentences = preprocess(english_sentences, vocab)
+    preprocessed_french_sentences = preprocess(french_sentences, vocab)
+    build_weights(len(vocab))
+    encoder_output = encoder(preprocessed_english_sentences, weights)
+    decoder_output = decoder(preprocessed_french_sentences, encoder_output, weights)
+    output_probs = post_decoder(decoder_output)
+
 
 
     
