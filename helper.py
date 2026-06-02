@@ -1,8 +1,10 @@
 """
 Helper functions for the project.
 """
+import re # for regex operations
 import numpy as np # representing matrix and thier operations
 np.random.seed(42) # for reproducibility
+from collections import Counter, defaultdict # for counting the frequency of tokens and storing the vocab corpus
 
 def old_tokenize(text, vocab):
     """
@@ -20,15 +22,57 @@ def old_tokenize(text, vocab):
         res.append(vocab[lowered_word])
     return res    
 
-from transformers import Autotokenizer
-import torch.nn as nn
+def get_stats(vocab_dict):
+    """
+    in build_tokenizer the words are spilt into their tokens by placing a space between them eg {"he l l o </w>" : 11}
+    we would use this to count the freq of the pairs of tokens
+    """
+    pairs = defaultdict(int)
+    for word, freq in vocab_dict.items():
+        # we split the words by space to extract tokens
+        tokens = word.split()
+        for i in range(len(tokens)-1):
+            pairs[tokens[i], tokens[i+1]] += freq
+    return pairs
 
-def tokenize(text, vocab):
+def merge_vocab(best_pair, vocab_dict):
     """
-    Now we would be using the Autotokenizer from the transformers library instead
+    removes whitespace and merge the best pair of tokens across the entire dictionary
     """
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    pass
+    new_vocab = {}
+    bigram = re.escape(" ".join(best_pair)) # add .escape ensures that special char are treated as strings
+    p = re.compile(r'(?<!\S)' + bigram + r'(?!\S)') # regex to find the bigram in the vocab dict
+    replace_string = "".join(best_pair)
+    for word in vocab_dict:
+        w_out = p.sub(replace_string, word)
+        new_vocab[w_out] = vocab_dict[word]
+    return new_vocab
+
+def byte_pair_tokenizer(text):
+    """
+    Now we would want to apply the byte pair encoding which was mentioned in the paper
+    We would to be safe just add in all the lowercase, upppercase letters, numbers, basic punctuation into the vocab corpus.
+    We must then somehow need to find out the common pairs of tokens in the text which sit next to each other and add them into the vocab corpus
+    We would iterativey do this process until we have hit the  deisred vocab size.
+    One of the small improvemnts we must make is to add an end of word token to prevent the model from learning the wrong tokens 
+    """
+    raw_word_counts = Counter(text.split()) 
+    vocab_dict = {}
+    for word, freq in raw_word_counts.items():
+        spaced_word = " ".join (list(word)) + "</w>" # add space to each token and special token at the end
+        vocab_dict[spaced_word] = freq
+    vocab = set(["<PAD>", "<SOS>", "<EOS>", "<UNK>"]) # initialize our corpus
+    for word in vocab_dict:
+        vocab.update(word.split()) # add the tokens into the corpus
+    target_vocab_size = 32000
+    merges_needed = target_vocab_size - len(vocab)
+    merges_done = []
+    for i in range(merges_needed):
+        pairs = get_stats(vocab_dict)
+        best_pair = max(pairs, key=pairs.get())
+        vocab_dict = merge_vocab(best_pair, vocab_dict)
+        merges_done.append(best_pair)
+    return vocab, merges_done
     
 
 def get_embedding_table(len_vocab):
