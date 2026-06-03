@@ -5,6 +5,8 @@ import re # for regex operations
 import numpy as np # representing matrix and thier operations
 np.random.seed(42) # for reproducibility
 from collections import Counter, defaultdict # for counting the frequency of tokens and storing the vocab corpus
+import torch
+import torch.nn as nn
 
 def old_tokenize(text, vocab):
     """
@@ -96,6 +98,23 @@ def get_embeddings(tokens, embedding):
     In the future we can use program it such that semantically, similar words have similar embeddings
     """
     return embedding[tokens]
+
+def build_torch_embedding_layer(vocab):
+    """
+    we would first map the words to the vocab_ids then map the vocab_ids to the embedding table to get the embeddings
+    """
+    token_to_id = {word:idx for idx, word in enumerate(vocab)}
+    embedding_layer = nn.Embedding(len(vocab), 512)
+    return token_to_id, embedding_layer
+
+def get_torch_embeddings(tokens, token_to_id, embedding_layer):
+    """
+    return the embeddings for the tokens 
+    we need to convert it into a tensor such that it can be used by nn.Embedding layer
+    """
+    token_ids = [token_to_id[token] for token in tokens]
+    token_ids_tensor = torch.tensor(token_ids)
+    return embedding_layer(token_ids_tensor)
 
 def get_positional_encoding(pos):
     """
